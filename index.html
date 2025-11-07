@@ -3,12 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>COVID-19 Global Dashboard</title>
+    <title>COVID-19 Global Dashboard | Outbreak Monitoring</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div class="container">
-      <!-- Header -->
       <header class="header">
         <div class="header-content">
           <div class="logo">
@@ -26,7 +25,7 @@
               <circle cx="15" cy="30" r="3" fill="#ef4444" />
               <circle cx="25" cy="30" r="3" fill="#ef4444" />
             </svg>
-            <h1>COVID-19 Dashboard</h1>
+            <h1>SENTINEL Dashboard</h1>
           </div>
           <div class="last-update">
             <span id="lastUpdate">Memuat data...</span>
@@ -34,7 +33,6 @@
         </div>
       </header>
 
-      <!-- Search Section -->
       <div class="search-section">
         <div class="search-box">
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -58,12 +56,13 @@
         </div>
       </div>
 
-      <!-- Stats Cards -->
-      <div class="stats-grid">
+      <div class="stats-grid stats-six-col">
         <div class="stat-card cases">
           <div class="stat-icon">
-            <svg width="30" height="30" viewBox="0 0 30 30" fill="currentColor">
-              <circle cx="15" cy="15" r="13" />
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm3.36 15.64a.8.8 0 0 1-1.13 0L12 14.4l-2.23 3.24a.8.8 0 0 1-1.13 0 .8.8 0 0 1 0-1.13L10.87 13 8.35 9.5a.8.8 0 0 1 1.3-1.07L12 11.5l2.35-3.07a.8.8 0 0 1 1.3 1.07L13.13 13l2.51 3.51a.8.8 0 0 1 0 1.13z"
+              />
             </svg>
           </div>
           <div class="stat-content">
@@ -75,9 +74,9 @@
 
         <div class="stat-card deaths">
           <div class="stat-icon">
-            <svg width="30" height="30" viewBox="0 0 30 30" fill="currentColor">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor">
               <path
-                d="M15 3L12 8H6L10 12L8 18L15 14L22 18L20 12L24 8H18L15 3Z"
+                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"
               />
             </svg>
           </div>
@@ -90,9 +89,9 @@
 
         <div class="stat-card recovered">
           <div class="stat-icon">
-            <svg width="30" height="30" viewBox="0 0 30 30" fill="currentColor">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor">
               <path
-                d="M15 2C8 2 2 8 2 15s6 13 13 13 13-6 13-13S22 2 15 2zm-2 19l-5-5 1.5-1.5L13 18l8.5-8.5L23 11l-10 10z"
+                d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.15C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
               />
             </svg>
           </div>
@@ -105,9 +104,10 @@
 
         <div class="stat-card active">
           <div class="stat-icon">
-            <svg width="30" height="30" viewBox="0 0 30 30" fill="currentColor">
-              <circle cx="15" cy="8" r="5" />
-              <path d="M15 16c-5 0-9 2-9 4.5V25h18v-4.5c0-2.5-4-4.5-9-4.5z" />
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M19 8h-2.5c-.32 0-.6-.21-.68-.53l-1-3c-.15-.45-.63-.77-1.18-.46l-3.23 2.15c-.45.3-.77.78-.46 1.18l.84 1.26C10.5 8.9 10.22 9 9.8 9H4c-.55 0-1 .45-1 1v6h2v-4h14v4h2v-6c0-.55-.45-1-1-1z"
+              />
             </svg>
           </div>
           <div class="stat-content">
@@ -116,79 +116,94 @@
             <span class="stat-today" id="critical">-</span>
           </div>
         </div>
+
+        <div class="stat-card cfr">
+          <div class="stat-icon">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"
+              />
+            </svg>
+          </div>
+          <div class="stat-content">
+            <h3>Rasio Kematian (CFR)</h3>
+            <p class="stat-number" id="caseFatalityRate">-</p>
+            <span class="stat-today" id="cfr-desc"
+              >Meninggal / Total Kasus</span
+            >
+          </div>
+        </div>
+
+        <div class="stat-card recovery-rate">
+          <div class="stat-icon">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.15C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+              />
+            </svg>
+          </div>
+          <div class="stat-content">
+            <h3>Rasio Kesembuhan</h3>
+            <p class="stat-number" id="recoveryRate">-</p>
+            <span class="stat-today" id="rr-desc">Sembuh / Total Kasus</span>
+          </div>
+        </div>
+      </div>
+      <div class="main-content-layout">
+        <div class="main-chart-area">
+          <div class="chart-section">
+            <div class="chart-header">
+              <h2>Grafik Real-time: Total Kasus, Aktif, Sembuh, & Meninggal</h2>
+              <div class="chart-legend">
+                <div class="legend-item">
+                  <span class="legend-color cases-color"></span>
+                  <span>Total Kasus</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-color active-color"></span>
+                  <span>Aktif</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-color recovered-color"></span>
+                  <span>Sembuh</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-color deaths-color"></span>
+                  <span>Meninggal</span>
+                </div>
+              </div>
+            </div>
+            <canvas id="covidChart"></canvas>
+          </div>
+
+          <div class="chart-section daily-trend-section">
+            <div class="chart-header">
+              <h2>Tren Kasus Baru Harian (30 Hari Terakhir)</h2>
+              <div class="chart-legend">
+                <div class="legend-item">
+                  <span class="legend-color cases-color"></span>
+                  <span>Kasus Baru Harian</span>
+                </div>
+              </div>
+            </div>
+            <div id="dailyChartLoader" class="chart-loader">
+              <div class="loader-spinner"></div>
+              <p>Memuat tren harian...</p>
+            </div>
+            <canvas id="dailyTrendChart" style="display: none"></canvas>
+          </div>
+        </div>
+
+        <div class="ranking-sidebar">
+          <div class="ranking-section">
+            <h2>Peringkat Global (Total Kasus)</h2>
+            <div id="ranking-list" class="ranking-list">
+              <p id="ranking-loader">Memuat data...</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- Chart Section -->
-      <div class="chart-section">
-        <div class="chart-header">
-          <h2>Grafik Real-time: Sembuh vs Meninggal</h2>
-          <div class="chart-legend">
-            <div class="legend-item">
-              <span class="legend-color recovered-color"></span>
-              <span>Sembuh</span>
-            </div>
-            <div class="legend-item">
-              <span class="legend-color deaths-color"></span>
-              <span>Meninggal</span>
-            </div>
-          </div>
-        </div>
-        <canvas id="covidChart"></canvas>
-      </div>
-
-      <!-- Historical Chart with Date Picker -->
-      <div class="chart-section historical-section">
-        <div class="chart-header">
-          <h2>Data Historis</h2>
-          <div class="date-controls">
-            <div class="date-picker-group">
-              <label for="startDate">Dari:</label>
-              <input type="date" id="startDate" class="date-input" />
-            </div>
-            <div class="date-picker-group">
-              <label for="endDate">Sampai:</label>
-              <input type="date" id="endDate" class="date-input" />
-            </div>
-            <button id="updateChartBtn" class="update-btn">
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="currentColor"
-              >
-                <path
-                  d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"
-                />
-                <path
-                  d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"
-                />
-              </svg>
-              Update
-            </button>
-          </div>
-        </div>
-        <div class="chart-legend">
-          <div class="legend-item">
-            <span class="legend-color cases-color"></span>
-            <span>Kasus</span>
-          </div>
-          <div class="legend-item">
-            <span class="legend-color deaths-color"></span>
-            <span>Meninggal</span>
-          </div>
-          <div class="legend-item">
-            <span class="legend-color recovered-color"></span>
-            <span>Sembuh</span>
-          </div>
-        </div>
-        <div id="chartLoader" class="chart-loader hidden">
-          <div class="loader-spinner"></div>
-          <p>Memuat data...</p>
-        </div>
-        <canvas id="historicalChart"></canvas>
-      </div>
-
-      <!-- Footer -->
       <footer class="footer">
         <p>
           Data dari

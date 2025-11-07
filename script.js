@@ -1,22 +1,18 @@
-// API Configuration
-const API_BASE = "https://disease.sh/v3/covid-19";
+const API_BASE = "https://disease.sh/v3/covid-19"; //API base URL
 let covidChart = null;
-let historicalChart = null;
+let dailyTrendChart = null;
 let currentCountry = null;
 
-// Initialize
 document.addEventListener("DOMContentLoaded", () => {
   loadGlobalData();
+  loadGlobalRanking();
   setupEventListeners();
-  initializeDatePickers();
   startRealTimeUpdate();
 });
 
-// Event Listeners
 function setupEventListeners() {
   const searchBtn = document.getElementById("searchBtn");
   const searchInput = document.getElementById("searchInput");
-  const updateChartBtn = document.getElementById("updateChartBtn");
 
   searchBtn.addEventListener("click", searchCountry);
   searchInput.addEventListener("keypress", (e) => {
@@ -24,31 +20,8 @@ function setupEventListeners() {
       searchCountry();
     }
   });
-
-  updateChartBtn.addEventListener("click", updateHistoricalChart);
 }
 
-// Initialize Date Pickers
-function initializeDatePickers() {
-  const endDate = document.getElementById("endDate");
-  const startDate = document.getElementById("startDate");
-
-  // Set end date to today
-  const today = new Date();
-  endDate.value = today.toISOString().split("T")[0];
-  endDate.max = today.toISOString().split("T")[0];
-
-  // Set start date to 30 days ago
-  const thirtyDaysAgo = new Date(today);
-  thirtyDaysAgo.setDate(today.getDate() - 30);
-  startDate.value = thirtyDaysAgo.toISOString().split("T")[0];
-  startDate.max = today.toISOString().split("T")[0];
-
-  // Load initial historical data
-  loadHistoricalData("all", 30);
-}
-
-// Load Global Data
 async function loadGlobalData() {
   try {
     const response = await fetch(`${API_BASE}/all`);
@@ -57,13 +30,51 @@ async function loadGlobalData() {
     updateStats(data);
     updateLastUpdate(data.updated);
     initChart(data);
+    loadHistoricalDailyData("all");
   } catch (error) {
     console.error("Error loading global data:", error);
     showError("Gagal memuat data global");
   }
 }
 
-// Search Country
+async function loadGlobalRanking() {
+  const rankingList = document.getElementById("ranking-list");
+  const loader = document.getElementById("ranking-loader");
+  rankingList.innerHTML = "";
+
+  if (loader) loader.style.display = "block";
+
+  try {
+    const response = await fetch(
+      `${API_BASE}/countries?sort=cases&allowNull=false` // Fetch countries sorted by total cases
+    );
+    const data = await response.json();
+
+    if (loader) loader.style.display = "none";
+
+    if (data && data.length > 0) {
+      const topCountries = data.slice(0, 10);
+
+      topCountries.forEach((country, index) => {
+        const item = document.createElement("div");
+        item.className = "ranking-item";
+        item.innerHTML = `
+						<span class="rank-number">${index + 1}</span>
+						<span class="rank-country">${country.country}</span>
+						<span class="rank-cases">${formatNumber(country.cases)}</span>
+					`;
+        rankingList.appendChild(item);
+      });
+    }
+  } catch (error) {
+    console.error("Error loading global ranking:", error);
+    if (loader) {
+      loader.textContent = "Gagal memuat peringkat global.";
+      loader.style.display = "block";
+    }
+  }
+}
+
 async function searchCountry() {
   const searchInput = document.getElementById("searchInput");
   const countryName = searchInput.value.trim();
@@ -74,7 +85,7 @@ async function searchCountry() {
   }
 
   try {
-    const response = await fetch(`${API_BASE}/countries/${countryName}`);
+    const response = await fetch(`${API_BASE}/countries/${countryName}`); // Fetch country data
 
     if (!response.ok) {
       throw new Error("Negara tidak ditemukan");
@@ -88,11 +99,7 @@ async function searchCountry() {
     updateLastUpdate(data.updated);
     updateChart(data);
 
-    // Update historical chart for selected country
-    const startDate = document.getElementById("startDate").value;
-    const endDate = document.getElementById("endDate").value;
-    const days = calculateDaysDifference(startDate, endDate);
-    loadHistoricalData(countryName, days);
+    loadHistoricalDailyData(countryName);
   } catch (error) {
     console.error("Error searching country:", error);
     alert(
@@ -101,144 +108,80 @@ async function searchCountry() {
   }
 }
 
-// Calculate Days Difference
-function calculateDaysDifference(startDate, endDate) {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  const diffTime = Math.abs(end - start);
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return diffDays || 30;
-}
+async function loadHistoricalDailyData(country) {
+  const loader = document.getElementById("dailyChartLoader");
+  const canvas = document.getElementById("dailyTrendChart");
 
-// Load Historical Data
-async function loadHistoricalData(country, days) {
-  const loader = document.getElementById("chartLoader");
-  const canvas = document.getElementById("historicalChart");
-
-  loader.classList.remove("hidden");
+  loader.style.display = "flex";
   canvas.style.display = "none";
 
   try {
     const endpoint =
       country === "all"
-        ? `${API_BASE}/historical/all?lastdays=${days}`
-        : `${API_BASE}/historical/${country}?lastdays=${days}`;
+        ? `${API_BASE}/historical/all?lastdays=30` //API endpoint for global historical data
+        : `${API_BASE}/historical/${country}?lastdays=30`; //API endpoint for country historical data
 
     const response = await fetch(endpoint);
     const data = await response.json();
 
-    // Process data
-    let cases, deaths, recovered;
+    let casesData;
 
     if (country === "all") {
-      cases = data.cases;
-      deaths = data.deaths;
-      recovered = data.recovered;
+      casesData = data.cases;
     } else {
-      cases = data.timeline.cases;
-      deaths = data.timeline.deaths;
-      recovered = data.timeline.recovered;
+      casesData = data.timeline.cases;
     }
 
-    initHistoricalChart(cases, deaths, recovered);
+    const dates = Object.keys(casesData);
+    const cumulativeCases = Object.values(casesData);
+    const dailyNewCases = [];
+
+    for (let i = 1; i < cumulativeCases.length; i++) {
+      const dailyDiff = cumulativeCases[i] - cumulativeCases[i - 1];
+      dailyNewCases.push(Math.max(0, dailyDiff));
+    }
+
+    const dailyDates = dates.slice(1);
+
+    initDailyTrendChart(dailyDates, dailyNewCases);
   } catch (error) {
-    console.error("Error loading historical data:", error);
-    alert(
-      "Gagal memuat data historis. Pastikan negara yang dipilih memiliki data historis."
-    );
+    console.error("Error loading daily trend data:", error);
+    loader.innerHTML =
+      '<p style="color: #ef4444;">Gagal memuat data tren harian.</p>';
   } finally {
-    loader.classList.add("hidden");
+    loader.style.display = "none";
     canvas.style.display = "block";
   }
 }
 
-// Update Historical Chart
-function updateHistoricalChart() {
-  const startDate = document.getElementById("startDate").value;
-  const endDate = document.getElementById("endDate").value;
+function initDailyTrendChart(dates, dailyNewCases) {
+  const ctx = document.getElementById("dailyTrendChart").getContext("2d");
 
-  if (!startDate || !endDate) {
-    alert("Silakan pilih tanggal mulai dan akhir");
-    return;
-  }
-
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-
-  if (start > end) {
-    alert("Tanggal mulai harus lebih kecil dari tanggal akhir");
-    return;
-  }
-
-  const days = calculateDaysDifference(startDate, endDate);
-  const country = currentCountry || "all";
-
-  loadHistoricalData(country, days);
-}
-
-// Initialize Historical Chart
-function initHistoricalChart(casesData, deathsData, recoveredData) {
-  const ctx = document.getElementById("historicalChart").getContext("2d");
-
-  const dates = Object.keys(casesData);
-  const cases = Object.values(casesData);
-  const deaths = Object.values(deathsData);
-  const recovered = Object.values(recoveredData);
-
-  // Format dates
   const formattedDates = dates.map((date) => {
     const d = new Date(date);
     return d.toLocaleDateString("id-ID", { month: "short", day: "numeric" });
   });
 
-  if (historicalChart) {
-    historicalChart.destroy();
+  if (dailyTrendChart) {
+    dailyTrendChart.destroy();
   }
 
-  historicalChart = new Chart(ctx, {
+  dailyTrendChart = new Chart(ctx, {
     type: "line",
     data: {
       labels: formattedDates,
       datasets: [
         {
-          label: "Kasus",
-          data: cases,
+          label: "Kasus Baru Harian",
+          data: dailyNewCases,
           borderColor: "#3b82f6",
           backgroundColor: "rgba(59, 130, 246, 0.1)",
           borderWidth: 2,
           fill: true,
           tension: 0.4,
-          pointRadius: 0,
-          pointHoverRadius: 6,
-          pointHoverBackgroundColor: "#3b82f6",
-          pointHoverBorderColor: "#fff",
-          pointHoverBorderWidth: 2,
-        },
-        {
-          label: "Meninggal",
-          data: deaths,
-          borderColor: "#ef4444",
-          backgroundColor: "rgba(239, 68, 68, 0.1)",
-          borderWidth: 2,
-          fill: true,
-          tension: 0.4,
-          pointRadius: 0,
-          pointHoverRadius: 6,
-          pointHoverBackgroundColor: "#ef4444",
-          pointHoverBorderColor: "#fff",
-          pointHoverBorderWidth: 2,
-        },
-        {
-          label: "Sembuh",
-          data: recovered,
-          borderColor: "#10b981",
-          backgroundColor: "rgba(16, 185, 129, 0.1)",
-          borderWidth: 2,
-          fill: true,
-          tension: 0.4,
-          pointRadius: 0,
-          pointHoverRadius: 6,
-          pointHoverBackgroundColor: "#10b981",
+          pointRadius: 3,
+          pointHoverRadius: 8,
+          pointBackgroundColor: "#3b82f6",
           pointHoverBorderColor: "#fff",
           pointHoverBorderWidth: 2,
         },
@@ -256,10 +199,10 @@ function initHistoricalChart(casesData, deathsData, recoveredData) {
           display: false,
         },
         tooltip: {
-          backgroundColor: "rgba(15, 23, 42, 0.95)",
+          backgroundColor: "rgba(255, 255, 255, 0.95)",
           padding: 12,
-          titleColor: "#e2e8f0",
-          bodyColor: "#e2e8f0",
+          titleColor: "#1e293b",
+          bodyColor: "#1e293b",
           titleFont: {
             size: 13,
             weight: "bold",
@@ -269,7 +212,7 @@ function initHistoricalChart(casesData, deathsData, recoveredData) {
           },
           cornerRadius: 8,
           displayColors: true,
-          borderColor: "rgba(255, 255, 255, 0.1)",
+          borderColor: "rgba(0, 0, 0, 0.1)",
           borderWidth: 1,
           callbacks: {
             label: function (context) {
@@ -287,19 +230,19 @@ function initHistoricalChart(casesData, deathsData, recoveredData) {
             callback: function (value) {
               return formatNumber(value);
             },
-            color: "#64748b",
+            color: "#475569",
             font: {
               size: 11,
             },
           },
           grid: {
-            color: "rgba(255, 255, 255, 0.05)",
+            color: "rgba(0, 0, 0, 0.05)",
             drawBorder: false,
           },
         },
         x: {
           ticks: {
-            color: "#64748b",
+            color: "#475569",
             font: {
               size: 11,
             },
@@ -319,15 +262,19 @@ function initHistoricalChart(casesData, deathsData, recoveredData) {
   });
 }
 
-// Update Statistics
 function updateStats(data) {
-  document.getElementById("totalCases").textContent = formatNumber(data.cases);
-  document.getElementById("totalDeaths").textContent = formatNumber(
-    data.deaths
-  );
-  document.getElementById("totalRecovered").textContent = formatNumber(
-    data.recovered
-  );
+  const totalCases = data.cases || 0;
+  const totalDeaths = data.deaths || 0;
+  const totalRecovered = data.recovered || 0;
+
+  const cfr = totalCases > 0 ? (totalDeaths / totalCases) * 100 : 0;
+  const recoveryRate = totalCases > 0 ? (totalRecovered / totalCases) * 100 : 0;
+
+  document.getElementById("totalCases").textContent = formatNumber(totalCases);
+  document.getElementById("totalDeaths").textContent =
+    formatNumber(totalDeaths);
+  document.getElementById("totalRecovered").textContent =
+    formatNumber(totalRecovered);
   document.getElementById("activeCases").textContent = formatNumber(
     data.active
   );
@@ -344,9 +291,15 @@ function updateStats(data) {
   document.getElementById("critical").textContent = `Kritis: ${formatNumber(
     data.critical
   )}`;
+
+  document.getElementById("caseFatalityRate").textContent = `${cfr.toFixed(
+    2
+  )}%`;
+  document.getElementById("recoveryRate").textContent = `${recoveryRate.toFixed(
+    2
+  )}%`;
 }
 
-// Update Country Info
 function updateCountryInfo(data) {
   const countryInfo = document.getElementById("countryInfo");
   const countryName = document.getElementById("countryName");
@@ -358,7 +311,6 @@ function updateCountryInfo(data) {
   countryFlag.alt = `${data.country} flag`;
 }
 
-// Update Last Update
 function updateLastUpdate(timestamp) {
   const date = new Date(timestamp);
   const options = {
@@ -376,7 +328,6 @@ function updateLastUpdate(timestamp) {
   )}`;
 }
 
-// Initialize Chart
 function initChart(data) {
   const ctx = document.getElementById("covidChart").getContext("2d");
 
@@ -385,6 +336,22 @@ function initChart(data) {
     data: {
       labels: ["Data COVID-19"],
       datasets: [
+        {
+          label: "Total Kasus",
+          data: [data.cases],
+          backgroundColor: "rgba(59, 130, 246, 0.8)",
+          borderColor: "rgba(59, 130, 246, 1)",
+          borderWidth: 0,
+          borderRadius: 8,
+        },
+        {
+          label: "Kasus Aktif",
+          data: [data.active],
+          backgroundColor: "rgba(245, 158, 11, 0.8)",
+          borderColor: "rgba(245, 158, 11, 1)",
+          borderWidth: 0,
+          borderRadius: 8,
+        },
         {
           label: "Sembuh",
           data: [data.recovered],
@@ -411,10 +378,10 @@ function initChart(data) {
           display: false,
         },
         tooltip: {
-          backgroundColor: "rgba(15, 23, 42, 0.95)",
+          backgroundColor: "rgba(255, 255, 255, 0.95)",
           padding: 12,
-          titleColor: "#e2e8f0",
-          bodyColor: "#e2e8f0",
+          titleColor: "#1e293b",
+          bodyColor: "#1e293b",
           titleFont: {
             size: 13,
             weight: "bold",
@@ -424,7 +391,7 @@ function initChart(data) {
           },
           cornerRadius: 8,
           displayColors: true,
-          borderColor: "rgba(255, 255, 255, 0.1)",
+          borderColor: "rgba(0, 0, 0, 0.1)",
           borderWidth: 1,
           callbacks: {
             label: function (context) {
@@ -442,19 +409,19 @@ function initChart(data) {
             callback: function (value) {
               return formatNumber(value);
             },
-            color: "#64748b",
+            color: "#475569",
             font: {
               size: 11,
             },
           },
           grid: {
-            color: "rgba(255, 255, 255, 0.05)",
+            color: "rgba(0, 0, 0, 0.05)",
             drawBorder: false,
           },
         },
         x: {
           ticks: {
-            color: "#64748b",
+            color: "#475569",
             font: {
               size: 12,
               weight: "bold",
@@ -473,42 +440,42 @@ function initChart(data) {
   });
 }
 
-// Update Chart
 function updateChart(data) {
   if (covidChart) {
     covidChart.data.labels = [data.country || "Global"];
-    covidChart.data.datasets[0].data = [data.recovered];
-    covidChart.data.datasets[1].data = [data.deaths];
+    covidChart.data.datasets[0].data = [data.cases];
+    covidChart.data.datasets[1].data = [data.active];
+    covidChart.data.datasets[2].data = [data.recovered];
+    covidChart.data.datasets[3].data = [data.deaths];
     covidChart.update("active");
   }
 }
 
-// Real-time Update (every 5 minutes)
 function startRealTimeUpdate() {
   setInterval(async () => {
-    if (currentCountry) {
+    if (!currentCountry) {
+      loadGlobalData();
+      loadGlobalRanking();
+    } else {
       try {
         const response = await fetch(`${API_BASE}/countries/${currentCountry}`);
         const data = await response.json();
         updateStats(data);
         updateChart(data);
         updateLastUpdate(data.updated);
+        loadHistoricalDailyData(currentCountry);
       } catch (error) {
         console.error("Error updating data:", error);
       }
-    } else {
-      loadGlobalData();
     }
-  }, 300000); // 5 minutes
+  }, 300000);
 }
 
-// Helper: Format Number
 function formatNumber(num) {
-  if (num === undefined || num === null) return "0";
+  if (num === undefined || num === null || isNaN(num)) return "0";
   return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
 
-// Helper: Show Error
 function showError(message) {
-  alert(message);
+  console.error("Dashboard Error:", message);
 }
